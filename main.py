@@ -11,7 +11,7 @@ import cv2
 IMG_WIDTH = 512
 IMG_HEIGHT = 512
 IMG_CHANNELS = 3
-N_MOST_COMMON = 15
+N_MOST_COMMON = 14
 
 train_coco_inp, val_coco_inp = preprocessing.import_data()
 if not os.path.exists("data/train/annotations_correct.json"):
@@ -36,8 +36,4 @@ print(most_common)
 
 
 #mask = np.zeros((128, 128))
-preprocessing.get_mask(coco_train, anns)
-mask = coco_train.annToMask(anns[55])
-
-plt.imshow(mask, cmap="gray")
-plt.show()
+preprocessing.get_mask(coco_train, anns, most_common)

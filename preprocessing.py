@@ -3,6 +3,8 @@ import os
 import numpy as np
 import json
 import cv2
+import matplotlib.pyplot as plt
+
 
 import collections
 
@@ -110,22 +112,49 @@ def get_most_common(anns, N_MOST_COMMON): #get n most common categories and retu
     values = list(most_common.keys())
 
     #15 most frequent categories (dictionary 0....14 to cat_id)
-    id_correspondence = {i+1: values[i] for i in range(0, len(values))}
+    id_correspondence = {values[i]:i+1 for i in range(0, len(values))}
     return id_correspondence
 
-def get_mask(coco_train, anns):
-    masks = [] #empty list
-    imgs_id = coco_train.getImgIds()
-    imgs = coco_train.loadImgs(imgs_id)
-    print(imgs[0])
-    for img in imgs:
-        masks.append((img, np.zeros(img.shape)))
-    #mask = np.zeros((128, 128))
-    #mask = coco_train.annToMask(anns[55])
+def get_mask(coco_train, anns, most_common):
+    img_to_masks = []
+    folder = "data/train/images/"
+    count = 0
+    for filename in os.listdir(folder):
+        img_id = int(filename.lstrip("0").rstrip(".jpg")) #getting image id
+        img = cv2.imread(os.path.join(folder, filename))
+        mask = np.zeros((img.shape[0], img.shape[1]))
+        for ann in anns:
+            if ann["image_id"]==img_id:
+                if ann["category_id"] in most_common:
+                    new_mask = most_common[ann["category_id"]]*coco_train.annToMask(ann)
+                else:
+                    new_mask = 16 * coco_train.annToMask(ann)
+                for i in range(len(mask)):
+                    for j in range(len(mask[0])):
+                        if (new_mask[i][j]!=0 and mask[i][j]==0):
+                            mask[i][j] = new_mask[i][j]
+                        '''
+                        elif (new_mask[i][j]!=0 and mask[i][j]!=0):
+                            non_zero_new = np.count_nonzero(new_mask, keepdims=False)
+                            non_zero_old = np.count_nonzero(mask == mask[i, j])
+                            if non_zero_new < non_zero_old:
+                                mask[i, j] = new_mask[i, j]
+                                '''
+        #overlap lasciato che modifica solo se non c'è già (prima). provare a vedere cosa cambia se si considera la più piccola
+        img_to_masks.append((img, mask))
 
-    #cv2.imshow('mask', mask)
-    #cv2.waitKey(0)
-    #cv2.destroyAllWindows()
+        mask = mask/16
+        found= False
+        for i in mask:
+            for j in i:
+                if j > 1:
+                    found = True
 
+        if found:
+            count +=1
 
+        plt.imshow(mask, cmap="gray")
+        plt.show()
+
+    print(count)
 
