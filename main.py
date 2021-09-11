@@ -36,13 +36,24 @@ anns = coco_train.loadAnns(ann_ids)
 
 #getting most common categories
 most_common = preprocessing.get_most_common(anns, N_MOST_COMMON)
-print(most_common)
 
-
-#mask = np.zeros((128, 128))
-preprocessing.get_mask(coco_train, anns, most_common)
+X_train, y_train = preprocessing.train_generator(coco_train, anns, most_common)
 
 model = unet.unet_model()
 model_checkpoint = callbacks.ModelCheckpoint(filepath=checkpoint_filepath, monitor="val_accuracy", save_best_only=True)
 
-# model.fit(train_gen, EPOCHS)
+callbacks = [
+    callbacks.EarlyStopping(patience=2, monitor='val_loss'),
+    callbacks.TensorBoard(log_dir='logs')
+]
+
+results = model.fit(X_train, y_train, batch_size=32, epochs=EPOCHS, callbacks=callbacks)
+
+preds_train = model.predict(X_train[0])
+plt.imshow(preds_train, cmap='gray')
+plt.show()
+plt.imshow(y_train[0], cmap='gray')
+
+
+# plt.imshow(mask, cmap="gray")
+# plt.show()

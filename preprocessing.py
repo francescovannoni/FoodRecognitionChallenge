@@ -5,6 +5,7 @@ import json
 import cv2
 import matplotlib.pyplot as plt
 import collections
+from tqdm import tqdm
 
 IMG_WIDTH = 128
 IMG_HEIGHT = 128
@@ -36,25 +37,25 @@ def import_data():
 
 
 def check_badannotation(train_coco_inp):
-    if not os.path.exists("data/train/annotations_correct.json"):  # metti nel main
-        useless = []
-        for i in train_coco_inp['images']:
-            im = cv2.imread(f"data/train/images/{i['file_name']}")
-            if (im.shape[0] != i['height']) or (im.shape[1] != i['width']):
-                useless.append(i)
+    useless = []
+    for i in train_coco_inp['images']:
+        im = cv2.imread(f"data/train/images/{i['file_name']}")
+        if (im.shape[0] != i['height']) or (im.shape[1] != i['width']):
+            os.remove(f"data/train/images/{i['file_name']}")
+            useless.append(i)
 
-        print("Number of images with mismatching dimensions: ", len(useless))
-        bad_ids = [item["id"] for item in useless]
-        for i, item in enumerate(train_coco_inp['images']):
-            if item["id"] in bad_ids:
-                del train_coco_inp["images"][i]
+    print("Number of images with mismatching dimensions: ", len(useless))
+    bad_ids = [item["id"] for item in useless]
+    for i, item in enumerate(train_coco_inp['images']):
+        if item["id"] in bad_ids:
+            del train_coco_inp["images"][i]
 
-        for i, item in enumerate(train_coco_inp['annotations']):
-            if item["id"] in bad_ids:
-                del train_coco_inp["annotations"][i]
+    for i, item in enumerate(train_coco_inp['annotations']):
+        if item["id"] in bad_ids:
+            del train_coco_inp["annotations"][i]
 
-        with open("data/train/annotations_correct.json", "w") as f:
-            f.write(json.dumps(train_coco_inp))
+    with open("data/train/annotations_correct.json", "w") as f:
+        f.write(json.dumps(train_coco_inp))
 
 
 def check_non_empty_annotations(train_coco_inp):
@@ -114,56 +115,46 @@ def get_most_common(anns, N_MOST_COMMON):  # get n most common categories and re
 
     values = list(most_common.keys())
 
-    # 15 most frequent categories (dictionary 0....14 to cat_id)
-    id_correspondence = {values[i]: i + 1 for i in range(0, len(values))}
+    # 14 most frequent categories (dictionary 1....14 to cat_id, 15 others, 0 background)
+    id_correspondence = {values[i]: 15-i for i in range(0, len(values))}
     return id_correspondence
 
+def get_mask(img_id, img_shape, coco_train, anns, most_common):
+    mask = np.zeros((img_shape[0], img_shape[1]))
+    for ann in anns:
+        if ann["image_id"] == img_id:
+            if ann["category_id"] in most_common:
+                new_mask = most_common[ann["category_id"]] * coco_train.annToMask(ann)
+            else:
+                new_mask = coco_train.annToMask(ann) #no one of the most common
+            mask = np.maximum(new_mask, mask)
+        # provare a vedere cosa cambia se si considera la più piccola
+        # alternative: togliere completamente quelle con ovelap oppure come alex
+    mask = cv2.resize(mask, (IMG_WIDTH, IMG_HEIGHT))  # resizing all images
+    mask = mask / 15
+    return mask
 
-def get_mask(coco_train, anns, most_common):
-    img_to_masks = []
+'''
+for i in range(len(mask)):
+    for j in range(len(mask[0])):
+        if new_mask[i][j] != 0 and mask[i][j] == 0:
+            mask[i][j] = new_mask[i][j]
+
+        elif (new_mask[i][j]!=0 and mask[i][j]!=0):
+            non_zero_new = np.count_nonzero(new_mask, keepdims=False)
+            non_zero_old = np.count_nonzero(mask == mask[i, j])
+            if non_zero_new < non_zero_old:
+                mask[i, j] = new_mask[i, j]
+'''
+
+def train_generator(coco_train, anns, most_common):
     folder = "data/train/images/"
-    count = 0
-    for filename in os.listdir(folder):
+    X_train = []
+    y_train = []
+    for filename in tqdm(os.listdir(folder)):
         img_id = int(filename.lstrip("0").rstrip(".jpg"))  # getting image id
         img = cv2.imread(os.path.join(folder, filename))
-        mask = np.zeros((img.shape[0], img.shape[1]))
-        img = cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT))  # resizing  all images
-        for ann in anns:
-            if ann["image_id"] == img_id:
-                if ann["category_id"] in most_common:
-                    new_mask = most_common[ann["category_id"]] * coco_train.annToMask(ann)
-                else:
-                    new_mask = 16 * coco_train.annToMask(ann)
-                for i in range(len(mask)):
-                    for j in range(len(mask[0])):
-                        if new_mask[i][j] != 0 and mask[i][j] == 0:
-                            mask[i][j] = new_mask[i][j]
-                        '''
-                        elif (new_mask[i][j]!=0 and mask[i][j]!=0):
-                            non_zero_new = np.count_nonzero(new_mask, keepdims=False)
-                            non_zero_old = np.count_nonzero(mask == mask[i, j])
-                            if non_zero_new < non_zero_old:
-                                mask[i, j] = new_mask[i, j]
-                                '''
-        # overlap lasciato che modifica solo se non c'è già (prima). provare a vedere cosa cambia se si considera la più piccola
-        # alternative: togliere completamente quelle con ovelap oppure come alex
-        mask = cv2.resize(mask, (IMG_WIDTH, IMG_HEIGHT))  # resizing all images
-        img_to_masks.append((img, mask))
-
-        # check if overlap is disappeared
-        mask = mask / 16
-        found = False
-        for i in mask:
-            for j in i:
-                if j > 1:
-                    found = True
-
-        if found:
-            count += 1
-
-    # plt.imshow(mask, cmap="gray")
-    # plt.show()
-
-    print(count)
-
+        y_train.append(get_mask(img_id, img.shape, coco_train, anns, most_common))
+        X_train.append(cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
+    return X_train, y_train
 
