@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 import collections
 from tqdm import tqdm
+import pickle
 
 IMG_WIDTH = 128
 IMG_HEIGHT = 128
@@ -156,5 +157,9 @@ def train_generator(coco_train, anns, most_common):
         img = cv2.imread(os.path.join(folder, filename))
         y_train.append(get_mask(img_id, img.shape, coco_train, anns, most_common))
         X_train.append(cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
+    with open('X_train.pickle', 'wb') as handle:
+        pickle.dump(X_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    with open('y_train.pickle', 'wb') as handle:
+        pickle.dump(y_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
     return X_train, y_train
 

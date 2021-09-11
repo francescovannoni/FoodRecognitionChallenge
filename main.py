@@ -6,6 +6,7 @@ import unet
 from tensorflow.keras import callbacks
 import os
 from pycocotools.coco import COCO
+import pickle
 
 import numpy as np
 import cv2
@@ -37,7 +38,13 @@ anns = coco_train.loadAnns(ann_ids)
 #getting most common categories
 most_common = preprocessing.get_most_common(anns, N_MOST_COMMON)
 
-X_train, y_train = preprocessing.train_generator(coco_train, anns, most_common)
+if os.path.exists("X_train.pickle") and os.path.exists("y_train.pickle"):
+    with open('X_train.pickle', 'rb') as handle:
+        X_train = pickle.load(handle)
+    with open('y_train.pickle', 'rb') as handle:
+        y_train = pickle.load(handle)
+else:
+    X_train, y_train = preprocessing.train_generator(coco_train, anns, most_common)
 
 model = unet.unet_model()
 model_checkpoint = callbacks.ModelCheckpoint(filepath=checkpoint_filepath, monitor="val_accuracy", save_best_only=True)
