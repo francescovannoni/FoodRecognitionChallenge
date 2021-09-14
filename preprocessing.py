@@ -38,12 +38,13 @@ def import_data():
 # There are rotated 27 images, unuseless, so change dataset or remove them (in book shows these images)
 
 
-def check_badannotation(train_coco_inp):
+def check_badannotation(train_coco_inp, train_val):
     useless = []
     for i in train_coco_inp['images']:
-        im = cv2.imread(f"data/train/images/{i['file_name']}")
+        im = cv2.imread("data/" + train_val + f"/images/{i['file_name']}")
+        print("data/" + train_val + f"/images/{i['file_name']}")
         if (im.shape[0] != i['height']) or (im.shape[1] != i['width']):
-            os.remove(f"data/train/images/{i['file_name']}")
+            os.remove("data/train" + train_val + f"/images/{i['file_name']}")
             useless.append(i)
 
     print("Number of images with mismatching dimensions: ", len(useless))
@@ -137,6 +138,8 @@ def get_mask(img_id, img_shape, coco_train, anns, most_common):
     mask = mask / 15
     return mask
 
+
+'''
 def generator(coco_data, anns, most_common, BATCH_SIZE):
     folder = "data/train/images/"
 
@@ -163,25 +166,54 @@ def generator(coco_data, anns, most_common, BATCH_SIZE):
             i=0
             random.shuffle(list_imgs)
         yield X_train, y_train
+        '''
 
-def train_generator(coco_train, anns, most_common):
-    folder = "data/train/images/"
 
+def generator(coco_data, anns, most_common, path, train: bool):
     list_imgs = []
-    for filename in tqdm(os.listdir(folder)):
+    for filename in tqdm(os.listdir(path)):
         list_imgs.append(filename)
     dataset_size = len(list_imgs)
-    X_train = np.zeros((dataset_size, IMG_HEIGHT,IMG_WIDTH, IMG_CHANNELS))
-    y_train = np.zeros((dataset_size, IMG_HEIGHT,IMG_WIDTH, 1))
+    X = np.zeros((dataset_size, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    y = np.zeros((dataset_size, IMG_HEIGHT, IMG_WIDTH, 1))
 
     for i in range(dataset_size):
         img_id = int(list_imgs[i].lstrip("0").rstrip(".jpg"))  # getting image id
-        img = cv2.imread(os.path.join(folder, list_imgs[i]))
-        y_train[i] = get_mask(img_id, img.shape, coco_train, anns, most_common)
-        X_train[i] = cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT))
+        img = cv2.imread(os.path.join(path, list_imgs[i]), cv2.IMREAD_COLOR)
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = np.asarray(img)
+        y[i] = get_mask(img_id, img.shape, coco_data, anns, most_common)
+        X[i] = cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT))
+    if train:
+        with open('X_train.pickle', 'wb') as handle:
+            pickle.dump(X, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open('y_train.pickle', 'wb') as handle:
+            pickle.dump(y, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    else:
+        with open('X_test.pickle', 'wb') as handle:
+            pickle.dump(X, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with open('y_val.pickle', 'wb') as handle:
+            pickle.dump(y, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    return X, y
 
-    with open('X_train.pickle', 'wb') as handle:
-        pickle.dump(X_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    with open('y_train.pickle', 'wb') as handle:
-        pickle.dump(y_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    return X_train, y_train
+
+def check_badannotation_val(train_coco_inp):
+    useless = []
+    for i in train_coco_inp['images']:
+        im = cv2.imread(f"data/val/images/{i['file_name']}")
+        if (im.shape[0] != i['height']) or (im.shape[1] != i['width']):
+            os.remove(f"data/val/images/{i['file_name']}")
+            useless.append(i)
+
+    print("Number of images with mismatching dimensions: ", len(useless))
+    bad_ids = [item["id"] for item in useless]
+    for i, item in enumerate(train_coco_inp['images']):
+        if item["id"] in bad_ids:
+            del train_coco_inp["images"][i]
+
+    for i, item in enumerate(train_coco_inp['annotations']):
+        if item["id"] in bad_ids:
+            del train_coco_inp["annotations"][i]
+
+    with open("data/val/annotations_correct.json", "w") as f:
+        f.write(json.dumps(train_coco_inp))
