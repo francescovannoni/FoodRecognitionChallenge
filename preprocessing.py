@@ -6,6 +6,7 @@ import cv2
 import matplotlib.pyplot as plt
 import collections
 from tqdm import tqdm
+import random
 import pickle
 
 IMG_WIDTH = 128
@@ -120,6 +121,7 @@ def get_most_common(anns, N_MOST_COMMON):  # get n most common categories and re
     id_correspondence = {values[i]: 15-i for i in range(0, len(values))}
     return id_correspondence
 
+
 def get_mask(img_id, img_shape, coco_train, anns, most_common):
     mask = np.zeros((img_shape[0], img_shape[1]))
     for ann in anns:
@@ -131,35 +133,55 @@ def get_mask(img_id, img_shape, coco_train, anns, most_common):
             mask = np.maximum(new_mask, mask)
         # provare a vedere cosa cambia se si considera la più piccola
         # alternative: togliere completamente quelle con ovelap oppure come alex
-    mask = cv2.resize(mask, (IMG_WIDTH, IMG_HEIGHT))  # resizing all images
+    mask = np.expand_dims(cv2.resize(mask, (IMG_WIDTH, IMG_HEIGHT)), axis=-1)  # resizing all images
     mask = mask / 15
     return mask
 
-'''
-for i in range(len(mask)):
-    for j in range(len(mask[0])):
-        if new_mask[i][j] != 0 and mask[i][j] == 0:
-            mask[i][j] = new_mask[i][j]
+def generator(coco_data, anns, most_common, BATCH_SIZE):
+    folder = "data/train/images/"
 
-        elif (new_mask[i][j]!=0 and mask[i][j]!=0):
-            non_zero_new = np.count_nonzero(new_mask, keepdims=False)
-            non_zero_old = np.count_nonzero(mask == mask[i, j])
-            if non_zero_new < non_zero_old:
-                mask[i, j] = new_mask[i, j]
-'''
+    #prima erano liste
+    X_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    y_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, 1))
+    i=0
+    list_imgs = []
+    for filename in tqdm(os.listdir(folder)):
+        list_imgs.append(filename)
+    random.shuffle(list_imgs)
+    dataset_size = len(list_imgs)
+    print("Number of images: ", dataset_size)
+
+    while True:
+        for j in range(i, i+BATCH_SIZE):
+            img_id = int(list_imgs[j].lstrip("0").rstrip(".jpg"))  # getting image id
+            img = cv2.imread(os.path.join(folder, list_imgs[j]))
+            y_train[j-i] = (get_mask(img_id, img.shape, coco_data, anns, most_common))
+            X_train[j-i] = (cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
+
+        i += BATCH_SIZE
+        if(i+BATCH_SIZE >= dataset_size):
+            i=0
+            random.shuffle(list_imgs)
+        yield X_train, y_train
 
 def train_generator(coco_train, anns, most_common):
     folder = "data/train/images/"
-    X_train = []
-    y_train = []
+
+    list_imgs = []
     for filename in tqdm(os.listdir(folder)):
-        img_id = int(filename.lstrip("0").rstrip(".jpg"))  # getting image id
-        img = cv2.imread(os.path.join(folder, filename))
-        y_train.append(get_mask(img_id, img.shape, coco_train, anns, most_common))
-        X_train.append(cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
+        list_imgs.append(filename)
+    dataset_size = len(list_imgs)
+    X_train = np.zeros((dataset_size, IMG_HEIGHT,IMG_WIDTH, IMG_CHANNELS))
+    y_train = np.zeros((dataset_size, IMG_HEIGHT,IMG_WIDTH, 1))
+
+    for i in range(dataset_size):
+        img_id = int(list_imgs[i].lstrip("0").rstrip(".jpg"))  # getting image id
+        img = cv2.imread(os.path.join(folder, list_imgs[i]))
+        y_train[i] = get_mask(img_id, img.shape, coco_train, anns, most_common)
+        X_train[i] = cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT))
+
     with open('X_train.pickle', 'wb') as handle:
         pickle.dump(X_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
     with open('y_train.pickle', 'wb') as handle:
         pickle.dump(y_train, handle, protocol=pickle.HIGHEST_PROTOCOL)
     return X_train, y_train
-

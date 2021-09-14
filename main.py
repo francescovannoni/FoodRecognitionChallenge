@@ -1,4 +1,6 @@
 # Downloading data (and exploring)
+import random
+
 import matplotlib.pyplot as plt
 
 import preprocessing
@@ -11,12 +13,12 @@ import pickle
 import numpy as np
 import cv2
 
-IMG_WIDTH = 512
-IMG_HEIGHT = 512
+IMG_WIDTH = 128
+IMG_HEIGHT = 128
 IMG_CHANNELS = 3
 N_MOST_COMMON = 14
-EPOCHS = 15
-checkpoint_filepath = "/tmp/checkpoint"
+EPOCHS = 5
+BATCH_SIZE = 256
 
 train_coco_inp, val_coco_inp = preprocessing.import_data()
 if not os.path.exists("data/train/annotations_correct.json"):
@@ -45,22 +47,29 @@ if os.path.exists("X_train.pickle") and os.path.exists("y_train.pickle"):
         y_train = pickle.load(handle)
 else:
     X_train, y_train = preprocessing.train_generator(coco_train, anns, most_common)
+print(X_train.shape)
 
 model = unet.unet_model()
-model_checkpoint = callbacks.ModelCheckpoint(filepath=checkpoint_filepath, monitor="val_accuracy", save_best_only=True)
+model_checkpoint = callbacks.ModelCheckpoint('model.h5', monitor="val_accuracy", save_best_only=True)
 
 callbacks = [
-    callbacks.EarlyStopping(patience=2, monitor='val_loss'),
+    callbacks.EarlyStopping(patience=4, monitor='accuracy'),  # monitor era val_loss
     callbacks.TensorBoard(log_dir='logs')
 ]
 
-results = model.fit(X_train, y_train, batch_size=32, epochs=EPOCHS, callbacks=callbacks)
+random.shuffle(X_train)
+random.shuffle(y_train)
 
+results = model.fit(X_train[:512], y_train[:512], batch_size=4, epochs=EPOCHS, callbacks=callbacks)
+
+model.save('/model/')
+
+'''
 preds_train = model.predict(X_train[0])
 plt.imshow(preds_train, cmap='gray')
 plt.show()
 plt.imshow(y_train[0], cmap='gray')
-
+'''
 
 # plt.imshow(mask, cmap="gray")
 # plt.show()
