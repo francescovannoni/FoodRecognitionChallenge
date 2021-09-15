@@ -33,33 +33,28 @@ def import_data():
     print("No of Categories(Classes) present: ", len(val_coco_inp['categories']))
     return train_coco_inp, val_coco_inp
 
-
 # remove images with mismatching dimensions
 # There are rotated 27 images, unuseless, so change dataset or remove them (in book shows these images)
-
-
-def check_badannotation(train_coco_inp, train_val):
+def check_badannotation(coco_inp, train_val):
     useless = []
-    for i in train_coco_inp['images']:
+    for i in coco_inp['images']:
         im = cv2.imread("data/" + train_val + f"/images/{i['file_name']}")
-        print("data/" + train_val + f"/images/{i['file_name']}")
         if (im.shape[0] != i['height']) or (im.shape[1] != i['width']):
-            os.remove("data/train" + train_val + f"/images/{i['file_name']}")
+            os.remove("data/" + train_val + f"/images/{i['file_name']}")
             useless.append(i)
 
     print("Number of images with mismatching dimensions: ", len(useless))
     bad_ids = [item["id"] for item in useless]
-    for i, item in enumerate(train_coco_inp['images']):
+    for i, item in enumerate(coco_inp['images']):
         if item["id"] in bad_ids:
-            del train_coco_inp["images"][i]
+            del coco_inp["images"][i]
 
-    for i, item in enumerate(train_coco_inp['annotations']):
+    for i, item in enumerate(coco_inp['annotations']):
         if item["id"] in bad_ids:
-            del train_coco_inp["annotations"][i]
+            del coco_inp["annotations"][i]
 
-    with open("data/train/annotations_correct.json", "w") as f:
-        f.write(json.dumps(train_coco_inp))
-
+    with open("data/" + train_val + "/annotations_correct.json", "w") as f:
+        f.write(json.dumps(coco_inp))
 
 def check_non_empty_annotations(train_coco_inp):
     # checking if there are empty annotations
@@ -69,7 +64,6 @@ def check_non_empty_annotations(train_coco_inp):
             count += 1
     print('Numbers of empty annotations: ', count)
 
-
 def check_if_odd_annotations(train_coco_inp):
     # checking if there are annotations with missing numbers
     count = 0
@@ -77,7 +71,6 @@ def check_if_odd_annotations(train_coco_inp):
         if len(i["segmentation"][0]) % 2 == 1:
             count += 1
     print('Numbers of odd annotations: ', count)
-
 
 def choosing_best_size(train_coco_inp):
     img_width = []
@@ -99,8 +92,6 @@ def choosing_best_size(train_coco_inp):
     print("max_height: ", max_height)
     print("min_height: ", min_height)
     print("mean_height: ", mean_height)
-
-
 # if you want try also mode, anyway probably best size may be 512 as it is the
 # nearest power of two to the mean
 
@@ -122,7 +113,6 @@ def get_most_common(anns, N_MOST_COMMON):  # get n most common categories and re
     id_correspondence = {values[i]: 15-i for i in range(0, len(values))}
     return id_correspondence
 
-
 def get_mask(img_id, img_shape, coco_train, anns, most_common):
     mask = np.zeros((img_shape[0], img_shape[1]))
     for ann in anns:
@@ -139,34 +129,6 @@ def get_mask(img_id, img_shape, coco_train, anns, most_common):
     return mask
 
 
-'''
-def generator(coco_data, anns, most_common, BATCH_SIZE):
-    folder = "data/train/images/"
-
-    #prima erano liste
-    X_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-    y_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, 1))
-    i=0
-    list_imgs = []
-    for filename in tqdm(os.listdir(folder)):
-        list_imgs.append(filename)
-    random.shuffle(list_imgs)
-    dataset_size = len(list_imgs)
-    print("Number of images: ", dataset_size)
-
-    while True:
-        for j in range(i, i+BATCH_SIZE):
-            img_id = int(list_imgs[j].lstrip("0").rstrip(".jpg"))  # getting image id
-            img = cv2.imread(os.path.join(folder, list_imgs[j]))
-            y_train[j-i] = (get_mask(img_id, img.shape, coco_data, anns, most_common))
-            X_train[j-i] = (cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
-
-        i += BATCH_SIZE
-        if(i+BATCH_SIZE >= dataset_size):
-            i=0
-            random.shuffle(list_imgs)
-        yield X_train, y_train
-        '''
 
 
 def generator(coco_data, anns, most_common, path, train: bool):
@@ -196,24 +158,31 @@ def generator(coco_data, anns, most_common, path, train: bool):
             pickle.dump(y, handle, protocol=pickle.HIGHEST_PROTOCOL)
     return X, y
 
+'''
+def generator(coco_data, anns, most_common, BATCH_SIZE):
+    folder = "data/train/images/"
 
-def check_badannotation_val(train_coco_inp):
-    useless = []
-    for i in train_coco_inp['images']:
-        im = cv2.imread(f"data/val/images/{i['file_name']}")
-        if (im.shape[0] != i['height']) or (im.shape[1] != i['width']):
-            os.remove(f"data/val/images/{i['file_name']}")
-            useless.append(i)
+    #prima erano liste
+    X_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    y_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, 1))
+    i=0
+    list_imgs = []
+    for filename in tqdm(os.listdir(folder)):
+        list_imgs.append(filename)
+    random.shuffle(list_imgs)
+    dataset_size = len(list_imgs)
+    print("Number of images: ", dataset_size)
 
-    print("Number of images with mismatching dimensions: ", len(useless))
-    bad_ids = [item["id"] for item in useless]
-    for i, item in enumerate(train_coco_inp['images']):
-        if item["id"] in bad_ids:
-            del train_coco_inp["images"][i]
+    while True:
+        for j in range(i, i+BATCH_SIZE):
+            img_id = int(list_imgs[j].lstrip("0").rstrip(".jpg"))  # getting image id
+            img = cv2.imread(os.path.join(folder, list_imgs[j]))
+            y_train[j-i] = (get_mask(img_id, img.shape, coco_data, anns, most_common))
+            X_train[j-i] = (cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
 
-    for i, item in enumerate(train_coco_inp['annotations']):
-        if item["id"] in bad_ids:
-            del train_coco_inp["annotations"][i]
-
-    with open("data/val/annotations_correct.json", "w") as f:
-        f.write(json.dumps(train_coco_inp))
+        i += BATCH_SIZE
+        if(i+BATCH_SIZE >= dataset_size):
+            i=0
+            random.shuffle(list_imgs)
+        yield X_train, y_train
+        '''

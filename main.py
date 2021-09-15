@@ -50,9 +50,6 @@ val_anns = coco_val.loadAnns(val_ann_ids)
 # getting most common categories
 most_common = preprocessing.get_most_common(train_anns, N_MOST_COMMON)
 
-with open('most_common.pickle', 'wb') as handle:
-    pickle.dump(most_common, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
 if os.path.exists("X_train.pickle") and os.path.exists("y_train.pickle"):
     with open('X_train.pickle', 'rb') as handle:
         X_train = pickle.load(handle)
