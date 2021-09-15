@@ -128,10 +128,17 @@ def get_mask(img_id, img_shape, coco_train, anns, most_common):
     mask = mask / 15
     return mask
 
+def getImages(path):
+    list_imgs = []
+    for filename in tqdm(os.listdir(path)):
+        list_imgs.append(filename)
+    random.shuffle(list_imgs)
+    return  list_imgs
 
 
 
-def generator(coco_data, anns, most_common, path, train: bool):
+'''
+def old_generator(coco_data, anns, most_common, path, train: bool):
     list_imgs = []
     for filename in tqdm(os.listdir(path)):
         list_imgs.append(filename)
@@ -157,32 +164,6 @@ def generator(coco_data, anns, most_common, path, train: bool):
         with open('y_val.pickle', 'wb') as handle:
             pickle.dump(y, handle, protocol=pickle.HIGHEST_PROTOCOL)
     return X, y
-
 '''
-def generator(coco_data, anns, most_common, BATCH_SIZE):
-    folder = "data/train/images/"
 
-    #prima erano liste
-    X_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-    y_train = np.zeros((BATCH_SIZE, IMG_HEIGHT, IMG_WIDTH, 1))
-    i=0
-    list_imgs = []
-    for filename in tqdm(os.listdir(folder)):
-        list_imgs.append(filename)
-    random.shuffle(list_imgs)
-    dataset_size = len(list_imgs)
-    print("Number of images: ", dataset_size)
 
-    while True:
-        for j in range(i, i+BATCH_SIZE):
-            img_id = int(list_imgs[j].lstrip("0").rstrip(".jpg"))  # getting image id
-            img = cv2.imread(os.path.join(folder, list_imgs[j]))
-            y_train[j-i] = (get_mask(img_id, img.shape, coco_data, anns, most_common))
-            X_train[j-i] = (cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
-
-        i += BATCH_SIZE
-        if(i+BATCH_SIZE >= dataset_size):
-            i=0
-            random.shuffle(list_imgs)
-        yield X_train, y_train
-        '''
