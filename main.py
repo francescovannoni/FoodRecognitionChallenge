@@ -9,8 +9,8 @@ IMG_WIDTH = 128
 IMG_HEIGHT = 128
 IMG_CHANNELS = 3
 N_MOST_COMMON = 14
-EPOCHS = 5
-BATCH_SIZE = 256
+EPOCHS = 1
+BATCH_SIZE = 300
 
 train_coco_inp, val_coco_inp = preprocessing.import_data()
 if not os.path.exists("data/train/annotations_correct.json"):
@@ -55,23 +55,22 @@ callbacks = [
     callbacks.EarlyStopping(patience=4, monitor='accuracy'),  # monitor era val_loss
     callbacks.TensorBoard(log_dir='logs')
 ]
-
-optimizers = ["Adam", "sgd"]
-losses = [(sm.losses.categorical_focal_loss, "Categorical Focal Loss"), (sm.losses.cce_dice_loss, "Dice loss") , ("sparse_categorical_crossentropy", "Sparse Categorical CrossEntropy")]
+'''
+optimizers = ["adam", "sgd"]
+#losses = [(sm.losses.categorical_focal_loss, "Categorical Focal Loss"), (sm.losses.cce_dice_loss, "Dice loss") , ("sparse_categorical_crossentropy", "Sparse Categorical CrossEntropy")]
 
 model = []
 for opt in optimizers:
-    for loss in losses:
-        print("model parameters: optimizer - ", opt, " losses - ", loss[1])
-        model.append(unet.evaluate_model(opt, loss[0], train, dataset_train_size, BATCH_SIZE, callbacks))
+    print("model parameters: optimizer - ", opt, " losses - sparse_categorical_crossentropy")
+    model.append(unet.evaluate_model(opt, "sparse_categorical_crossentropy", train, dataset_train_size, BATCH_SIZE, callbacks))
 
 
-# modello generale
 '''
-model = unet.unet_model()
-model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
-model_checkpoint = callbacks.ModelCheckpoint('model.h5', monitor="val_accuracy", save_best_only=True)
-'''
+#model = unet.unet_model()
+#model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
+model2 = unet.evaluate_model("adam", "categorical_crossentropy", train, dataset_train_size, BATCH_SIZE, callbacks)
+#model_checkpoint = callbacks.ModelCheckpoint('model.h5', monitor="val_accuracy", save_best_only=True)
+
 
 
 #results = model.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)

@@ -101,6 +101,6 @@ def unet_model():
 
 def evaluate_model(optimizer, loss, data, dataset_size, batch_size, callbacks):
     model= unet_model()
-    model.compile(optimizer=optimizer, loss=loss, metrics=['meaniou', 'f1score', 'accuracy'])
+    model.compile(optimizer=optimizer, loss=loss, metrics=['accuracy'])
     model.fit(data, steps_per_epoch=dataset_size//batch_size , epochs=1, callbacks=callbacks)
     return model
