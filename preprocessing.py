@@ -3,7 +3,6 @@ import os
 import numpy as np
 import json
 import cv2
-import matplotlib.pyplot as plt
 import collections
 from tqdm import tqdm
 import random
@@ -135,6 +134,28 @@ def getImages(path):
     random.shuffle(list_imgs)
     return  list_imgs
 
+
+def generator(coco_data, anns, most_common, path, batch_size, list_imgs):
+    list_imgs = list_imgs
+    dataset_size = len(list_imgs)
+
+    i = 0
+    X = np.zeros((batch_size, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
+    y = np.zeros((batch_size, IMG_HEIGHT, IMG_WIDTH, 1))
+
+    while True:
+        for j in range(i, i + batch_size):
+            img_id = int(list_imgs[j].lstrip("0").rstrip(".jpg"))  # getting image id
+            img = cv2.imread(os.path.join(path, list_imgs[j]), cv2.IMREAD_COLOR)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            y[j - i] = (get_mask(img_id, img.shape, coco_data, anns, most_common))
+            X[j - i] = (cv2.resize(img, (IMG_WIDTH, IMG_HEIGHT)))
+
+        i += batch_size
+        if (i + batch_size >= dataset_size):
+            i = 0
+            random.shuffle(list_imgs)
+        yield X, y
 
 
 '''

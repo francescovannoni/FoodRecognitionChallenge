@@ -92,9 +92,15 @@ def unet_model():
     # metric accuracy
     outputs = layers.Conv2D(1, (1, 1), activation="sigmoid")(c9)
     model = tf.keras.Model(inputs=[inputs], outputs=[outputs])
-    model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+
 
     # is summary num parameters is the number of trainable parameters
     model.summary()
 
+    return model
+
+def evaluate_model(optimizer, loss, data, dataset_size, batch_size, callbacks):
+    model= unet_model()
+    model.compile(optimizer=optimizer, loss=loss, metrics=['meaniou', 'f1score', 'accuracy'])
+    model.fit(data, steps_per_epoch=dataset_size//batch_size , epochs=1, callbacks=callbacks)
     return model

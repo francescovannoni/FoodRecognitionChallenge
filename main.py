@@ -1,8 +1,3 @@
-# Downloading data (and exploring)
-import random
-import numpy as np
-import matplotlib.pyplot as plt
-
 import preprocessing
 import unet
 from tensorflow.keras import callbacks
@@ -74,6 +69,7 @@ for opt in optimizers:
 # modello generale
 '''
 model = unet.unet_model()
+model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 model_checkpoint = callbacks.ModelCheckpoint('model.h5', monitor="val_accuracy", save_best_only=True)
 '''
 
@@ -94,3 +90,4 @@ for i in range(len(X_val)):
     plt.show()
     plt.imshow(np.round(prediction[i]))
     plt.show()
+'''
