@@ -11,6 +11,7 @@ import pickle
 IMG_WIDTH = 128
 IMG_HEIGHT = 128
 IMG_CHANNELS = 3
+CATEGORIES = 16
 
 
 def import_data():
@@ -113,18 +114,15 @@ def get_most_common(anns, N_MOST_COMMON):  # get n most common categories and re
     return id_correspondence
 
 def get_mask(img_id, img_shape, coco_train, anns, most_common):
-    mask = np.zeros((img_shape[0], img_shape[1]))
+    mask = np.zeros((img_shape[0], img_shape[1], CATEGORIES))
     for ann in anns:
         if ann["image_id"] == img_id:
             if ann["category_id"] in most_common:
-                new_mask = most_common[ann["category_id"]] * coco_train.annToMask(ann)
+                mask[:,:,most_common[ann["category_id"]]] = coco_train.annToMask(ann)
             else:
-                new_mask = coco_train.annToMask(ann) #no one of the most common
-            mask = np.maximum(new_mask, mask)
-        # provare a vedere cosa cambia se si considera la più piccola
-        # alternative: togliere completamente quelle con ovelap oppure come alex
-    mask = np.expand_dims(cv2.resize(mask, (IMG_WIDTH, IMG_HEIGHT)), axis=-1)  # resizing all images
-    mask = mask / 15
+                mask[:,:,15] = coco_train.annToMask(ann) #no one of the most common
+    mask[:,:,15][mask[:,:,15] >= 1] = 1
+    mask = cv2.resize(mask , (IMG_HEIGHT,IMG_WIDTH))
     return mask
 
 def getImages(path):
@@ -141,7 +139,7 @@ def generator(coco_data, anns, most_common, path, batch_size, list_imgs):
 
     i = 0
     X = np.zeros((batch_size, IMG_HEIGHT, IMG_WIDTH, IMG_CHANNELS))
-    y = np.zeros((batch_size, IMG_HEIGHT, IMG_WIDTH, 1))
+    y = np.zeros((batch_size, IMG_HEIGHT, IMG_WIDTH, CATEGORIES))
 
     while True:
         for j in range(i, i + batch_size):
@@ -187,4 +185,19 @@ def old_generator(coco_data, anns, most_common, path, train: bool):
     return X, y
 '''
 
-
+#maschera vecchia senza one hot encoding
+'''
+def get_mask(img_id, img_shape, coco_train, anns, most_common):
+    mask = np.zeros((img_shape[0], img_shape[1]))
+    for ann in anns:
+        if ann["image_id"] == img_id:
+            if ann["category_id"] in most_common:
+                new_mask = most_common[ann["category_id"]] * coco_train.annToMask(ann)
+            else:
+                new_mask = coco_train.annToMask(ann) #no one of the most common
+            mask = np.maximum(new_mask, mask)
+        # provare a vedere cosa cambia se si considera la più piccola
+        # alternative: togliere completamente quelle con ovelap oppure come alex
+    mask = np.expand_dims(cv2.resize(mask, (IMG_WIDTH, IMG_HEIGHT)), axis=-1)  # resizing all images
+    mask = mask / 15
+    return mask'''

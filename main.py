@@ -1,9 +1,10 @@
 import preprocessing
 import unet
-from tensorflow.keras import callbacks
+from tensorflow import keras
 import os
 from pycocotools.coco import COCO
 import segmentation_models as sm
+
 
 IMG_WIDTH = 128
 IMG_HEIGHT = 128
@@ -51,11 +52,45 @@ dataset_val_size = len(val_images_name)
 
 train = preprocessing.generator(coco_train, train_anns, most_common, path="data/train/images/",  batch_size=BATCH_SIZE, list_imgs=train_images_name)
 
+
 callbacks = [
-    callbacks.EarlyStopping(patience=4, monitor='accuracy'),  # monitor era val_loss
-    callbacks.TensorBoard(log_dir='logs')
+    keras.callbacks.EarlyStopping(patience=4, monitor='accuracy'),  # monitor era val_loss
+    keras.callbacks.TensorBoard(log_dir='logs')
 ]
+
+print('Model adam dice')
+adam_dice= unet.unet_model()
+adam_dice.compile(optimizer='adam', loss=sm.losses.cce_dice_loss, metrics=['accuracy', sm.metrics.iou_score, sm.metrics.precision, sm.metrics.recall])
+adam_dice.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
+
+print('Model adam focal')
+adam_focal= unet.unet_model()
+adam_focal.compile(optimizer='adam', loss=sm.losses.categorical_focal_loss, metrics=['accuracy', sm.metrics.iou_score, sm.metrics.precision, sm.metrics.recall])
+adam_focal.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
+
+print('Model adam cce')
+adam_cce= unet.unet_model()
+adam_cce.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy', sm.metrics.iou_score, sm.metrics.precision, sm.metrics.recall])
+adam_cce.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
+
+print('Model sgd dice')
+sgd_dice= unet.unet_model()
+sgd_dice.compile(optimizer='sgd', loss=sm.losses.cce_dice_loss, metrics=['accuracy', sm.metrics.iou_score, sm.metrics.precision, sm.metrics.recall])
+sgd_dice.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
+
+print('Model sgd focal')
+sgd_focal= unet.unet_model()
+sgd_focal.compile(optimizer='sgd', loss=sm.losses.categorical_focal_loss, metrics=['accuracy', sm.metrics.iou_score, sm.metrics.precision, sm.metrics.recall])
+sgd_focal.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
+
+print('Model sgd cce')
+sgd_cce= unet.unet_model()
+sgd_cce.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=['accuracy', sm.metrics.iou_score, sm.metrics.precision, sm.metrics.recall])
+sgd_cce.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
+
 '''
+
+
 optimizers = ["adam", "sgd"]
 #losses = [(sm.losses.categorical_focal_loss, "Categorical Focal Loss"), (sm.losses.cce_dice_loss, "Dice loss") , ("sparse_categorical_crossentropy", "Sparse Categorical CrossEntropy")]
 
@@ -65,17 +100,17 @@ for opt in optimizers:
     model.append(unet.evaluate_model(opt, "sparse_categorical_crossentropy", train, dataset_train_size, BATCH_SIZE, callbacks))
 
 
-'''
-#model = unet.unet_model()
-#model.compile(optimizer="adam", loss="sparse_categorical_crossentropy", metrics=["accuracy"])
-model2 = unet.evaluate_model("adam", "categorical_crossentropy", train, dataset_train_size, BATCH_SIZE, callbacks)
+
+model = unet.unet_model()
+model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+#model2 = unet.evaluate_model("adam", "categorical_crossentropy", train, dataset_train_size, BATCH_SIZE, callbacks)
 #model_checkpoint = callbacks.ModelCheckpoint('model.h5', monitor="val_accuracy", save_best_only=True)
 
 
 
-#results = model.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
+results = model.fit(train, steps_per_epoch=dataset_train_size//BATCH_SIZE , epochs=EPOCHS, callbacks=callbacks)
 #model.save('model/')
-'''
+
 #try some elements
 X_val = X_val[:10]
 y_val = y_val[:10]
@@ -90,3 +125,4 @@ for i in range(len(X_val)):
     plt.imshow(np.round(prediction[i]))
     plt.show()
 '''
+
