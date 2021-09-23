@@ -6,7 +6,7 @@ Food recognition is an interesting and active topic nowadays. It could be useful
 One of the hardest task is that we should be able to recognize and segment from photos taken by common people and not from professional photographers. Accordingly to it food may be overlapping and mixed up, photos may be not perfectly on focus or they may show only a part of the dish.
 Our approach is to use convolutional neural networks to segment images.
 
-### Requirements
+## Requirements
 
 * [Python](https://www.python.org/)
 * [TensorFlow](https://www.tensorflow.org/)
@@ -17,7 +17,7 @@ Our approach is to use convolutional neural networks to segment images.
 * [Segmentation Models](https://github.com/qubvel/segmentation_models.org/)
 * [PyCOCOTools](https://github.com/cocodataset/cocoapi/tree/master/PythonAPI/pycocotools)
 
-### Results Visualization
+## Results Visualization
 #### Binary Class Segmentation
 
 <p align='center'>
