@@ -33,7 +33,7 @@ Our approach is to use convolutional neural networks to segment images.
 #### Class Recognition
 
 <p align='center'>
-  <img src="resources/demo.gif" width="80%"/>
+  <img src="resources/image.jpg" width="80%"/>
 </p>
 
 
